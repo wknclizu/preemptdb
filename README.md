@@ -6,4 +6,6 @@ Low-Latency Transaction Scheduling via Userspace Interrupts: Why Wait or Yield W
 Kaisong Huang, Jiatang Zhou, Zhuoyue Zhao, Dong Xie, Tianzheng Wang.
 (Camera-ready version in progress)
 ```
+Click [here](https://kaisonghuang.github.io/resources/preemptdb-preprint.pdf) for preprint version.
+
 ### Stay tuned for build and run instructions
