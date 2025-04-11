@@ -4,6 +4,7 @@
 #include <string>
 #include <ctype.h>
 #include <unistd.h>
+#include <gflags/gflags.h>
 
 #include "../bench.h"
 #include "../dbtest.h"
