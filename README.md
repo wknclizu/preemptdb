@@ -1,4 +1,4 @@
-# PreemptDB: Low-Latency Scheduling via Userspace Interrupts
+# PreemptDB: Low-Latency Transaction Scheduling via Userspace Interrupts
 
 PreemptDB a database engine that supports lightweight userspace preemptible transactions enabled by Intel x86 user interrupt (uintr).
 PreemptDB allows high-priority, short-transactions to quickly preempt and pause long-running, low-priority transactions which is resumed after the short-transaction concludes.
