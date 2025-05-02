@@ -6,9 +6,12 @@
 #include <unistd.h>
 #include <gflags/gflags.h>
 
+#include <gflags/gflags.h>
+
 #include "../bench.h"
 #include "../dbtest.h"
 #include "tpcc.h"
+
 
 // configuration flags
 // XXX(shiges): For compatibility issues, we keep gflags configs and the old

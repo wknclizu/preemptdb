@@ -39,10 +39,12 @@ void flush_all() {
 }
 
 void dequeue_committed_xcts() {
+  pcontext::lock();
   std::lock_guard<std::mutex> guard(ermia::tlog_lock);
   for (auto &tlog : tlogs) {
     tlog->dequeue_committed_xcts();
   }
+  pcontext::unlock();
 }
 
 void wakeup_commit_daemon() {
@@ -82,6 +84,7 @@ void uninitialize() {
 
 void tls_log::initialize(const char *log_dir, uint32_t log_id, uint32_t node,
                          uint64_t logbuf_mb, uint64_t max_segment_mb) {
+  pcontext::lock();
   std::lock_guard<std::mutex> lock(tls_log_lock);
   dir = log_dir;
   id = log_id;
@@ -119,9 +122,11 @@ void tls_log::initialize(const char *log_dir, uint32_t log_id, uint32_t node,
 
   // Initialize committer
   tcommitter.initialize(log_id);
+  pcontext::unlock();
 }
 
 void tls_log::uninitialize() {
+  pcontext::lock();
   std::lock_guard<std::mutex> lg(lock);
   if (logbuf_offset) {
     uint64_t aligned_size = align_up_flush_size(logbuf_offset);
@@ -131,9 +136,11 @@ void tls_log::uninitialize() {
     poll_flush();
   }
   io_uring_queue_exit(&ring);
+  pcontext::unlock();
 }
 
 void tls_log::enqueue_flush() {
+  pcontext::lock();
   std::lock_guard<std::mutex> lg(lock);
   if (flushing) {
     poll_flush();
@@ -147,9 +154,11 @@ void tls_log::enqueue_flush() {
     issue_flush(active_logbuf, logbuf_offset);
     switch_log_buffers();
   }
+  pcontext::unlock();
 }
 
 void tls_log::last_flush() {
+  pcontext::lock();
   std::lock_guard<std::mutex> lg(lock);
   if (flushing) {
     poll_flush();
@@ -165,6 +174,7 @@ void tls_log::last_flush() {
     poll_flush();
     flushing = false;
   }
+  pcontext::unlock();
 }
 
 // TODO(tzwang) - fd should correspond to the actual segment
@@ -329,6 +339,7 @@ log_block *tls_log::allocate_log_block(uint32_t payload_size,
     return nullptr;
   }
 
+  pcontext::lock();
   std::lock_guard<std::mutex> lg(lock);
   tcommitter.set_dirty_flag();
 
@@ -388,6 +399,7 @@ log_block *tls_log::allocate_log_block(uint32_t payload_size,
   // each log record needs to carry a CSN so that during recovery/read op
   // the newly instantiated record can directly be filled out with its CSN
   lb->csn = block_csn;
+  pcontext::unlock();
   return lb;
 }
 

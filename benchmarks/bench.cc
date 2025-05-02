@@ -162,7 +162,9 @@ bool bench_worker::finish_workload(rc_t ret, uint32_t workload_idx, util::timer 
         latency_samples.push_back(lat);
       } else {
         // Replace elements with decreasing probability
+        pcontext::lock();
         size_t j = std::rand() % (commit_count + 1);
+        pcontext::unlock();
         if (j < ermia::config::latency_sample_size) {
           latency_samples[j] = lat;
         }

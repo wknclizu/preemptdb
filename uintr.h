@@ -28,22 +28,22 @@
 #define NUM_CONTEXTS 2
 #define MAX_CORES 64
 
-// #define SPACE
-// #define mymalloc malloc SPACE
-// #define myfree free SPACE
-
-// #define malloc(size) ({ \
-//   pcontext::lock(); \
-//   void* p = mymalloc(size); \
-//   pcontext::unlock(); \
-//   p; \
-// })
-
-// #define free(p) do { \
-//   pcontext::lock(); \
-//   myfree(p); \
-//   pcontext::unlock(); \
-// } while (0)
+#if 0
+#define SPACE
+#define mymalloc malloc SPACE
+#define myfree free SPACE
+#define malloc(size) ({ \
+  pcontext::lock(); \
+  void* p = mymalloc(size); \
+  pcontext::unlock(); \
+  p; \
+})
+#define free(p) do { \
+  pcontext::lock(); \
+  myfree(p); \
+  pcontext::unlock(); \
+} while (0)
+#endif
 
 // Spinlock class definition
 class Spinlock {
@@ -110,6 +110,29 @@ struct alignas(64) pcontext {
   static void unlock();
 };
 
+static inline void* locked_malloc(std::size_t size) {
+  pcontext::lock();
+  void* p = std::malloc(size);    // call the real allocator
+  pcontext::unlock();
+  return p;
+}
+
+static inline void  locked_free(void* p) {
+  pcontext::lock();
+  std::free(p);
+  pcontext::unlock();
+}
+
+#ifdef malloc
+#undef malloc
+#endif
+#ifdef free
+#undef free
+#endif
+
+#define malloc(sz) locked_malloc(sz)
+#define free(p)   locked_free(p)
+
 extern pcontext* curr_ctx[MAX_CORES];
 
 uint32_t GetWorkerId();
@@ -124,11 +147,11 @@ interrupt_handler_func(struct __uintr_frame *ui_frame, unsigned long long vector
 
 extern "C" void swap_context(void *current_context, void *next_context) asm("swap_context");
 
-// inline void *operator new (size_t size) {
-//   void *p = malloc(size);
-//   return p;
-// }
+inline void *operator new (size_t size) {
+  void *p = malloc(size);
+  return p;
+}
 
-// inline void operator delete (void *p) noexcept {
-//   free(p);
-// }
+inline void operator delete (void *p) noexcept {
+  free(p);
+}
