@@ -118,6 +118,9 @@ link_libraries(glog::glog)
 find_package(gflags REQUIRED COMPONENTS shared)
 link_libraries(gflags_shared)
 
+find_library(LIBUINTRDRIV uintrdriv)
+link_libraries(${LIBUINTRDRIV})
+
 pkg_check_modules(LIBURING REQUIRED liburing)
 add_compile_options(${LIBURING_CFLAGS_OTHER})
 include_directories(${LIBURING_INCLUDE_DIRS})

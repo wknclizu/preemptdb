@@ -6,6 +6,7 @@
 #if !defined(NESTED_COROUTINE) && !defined(HYBRID_COROUTINE)
 
 #include "tpcc-config.h"
+#include "./../../uintr.h"
 
 class tpcc_sequential_worker : public bench_worker, public tpcc_worker_mixin {
  public:
@@ -1239,7 +1240,7 @@ retry:
       }
 
       for (int i = 0; i < ermia::config::worker_threads; ++i) {
-        int sender_idx = uintr_register_sender(ermia::receiver_fd_map[i], 0);
+        int sender_idx = uintr_register_sender(ermia::receiver_fd_map[i], 0, 0);
         if (sender_idx < 0) {
           printf("[ERROR] Failed to register sender.\n");
           exit(1);
@@ -1311,7 +1312,7 @@ retry:
 
     if (ermia::config::scheduling_policy == 2) {
       for (int i = 0; i < ermia::config::worker_threads; ++i) {
-        uintr_unregister_sender(ermia::sender_idx_map[i], 0);
+        uintr_unregister_sender(ermia::sender_idx_map[i]);
       }
     }
 
@@ -1350,17 +1351,18 @@ retry:
       ermia::thread::Thread::MainContext()->gs = _readgsbase_u64();
 
       std::lock_guard<std::mutex> guard(ermia::receiver_fd_map_lock);
-      uintr_register_handler(interrupt_handler_func, 0);
-      printf("[INFO] Worker[%d] registered handler\n", worker_id);
 
-      int receiver_fd = uintr_create_fd(worker_id, 0);
-      if (receiver_fd < 0) {
+      uintr_receiver_id_t receiver_id = uintr_register_handler(reinterpret_cast<void *>(interrupt_handler_func), NULL, 0, 0);
+      if (receiver_id < 0) {
         perror(NULL);
         printf("[ERROR] Worker[%d] failed to create uintr fd.\n", worker_id);
         exit(1);
       }
-      printf("[INFO] Worker[%d] created receiver fd %d\n", worker_id, receiver_fd);
-      ermia::receiver_fd_map[worker_id] = receiver_fd;
+
+      printf("[INFO] Worker[%d] registered handler\n", worker_id);
+
+      printf("[INFO] Worker[%d] created receiver fd %lu\n", worker_id, receiver_id);
+      ermia::receiver_fd_map[worker_id] = receiver_id;
     }
 
     barrier_a->count_down();
