@@ -1,6 +1,7 @@
 #pragma once
 #include <unistd.h>
 #include <x86gprintrin.h>
+#include <uintrintrin.h> /* gcc >= 13 shipped with Ubuntu commented this out */
 #include <cstdint>
 #include <pthread.h>
 #include <stdlib.h>
@@ -9,9 +10,8 @@
 #include <mutex>
 #include <atomic>
 
-extern "C" {
+#ifdef USE_LIBUINTRDRIV
 #include <uintrdriv.h>
-}
 
 #define uintr_register_handler(handler, stack, stack_size, flags)              \
   (uintr_register_handler(handler, stack, stack_size, flags))
@@ -22,6 +22,26 @@ extern "C" {
 #define uintr_unregister_sender(idx) (uintr_unregister_sender(idx))
 #define uintr_wait(flags) (noop())
 #define uintr_create_fd(flags) (noop())
+
+#else /* using Intel patched kernel */
+
+#ifndef __NR_uintr_register_handler
+#define __NR_uintr_register_handler   471
+#define __NR_uintr_unregister_handler 472
+#define __NR_uintr_create_fd          473
+#define __NR_uintr_register_sender    474
+#define __NR_uintr_unregister_sender  475
+#define __NR_uintr_wait               476
+#endif
+
+#define uintr_register_handler(handler, flags)  syscall(__NR_uintr_register_handler, handler, flags)
+#define uintr_unregister_handler(flags)         syscall(__NR_uintr_unregister_handler, flags)
+#define uintr_create_fd(vector, flags)          syscall(__NR_uintr_create_fd, vector, flags)
+#define uintr_register_sender(fd, flags)        syscall(__NR_uintr_register_sender, fd, flags)
+#define uintr_unregister_sender(ipi_idx, flags) syscall(__NR_uintr_unregister_sender, ipi_idx, flags)
+#define uintr_wait(flags)                       syscall(__NR_uintr_wait, flags)
+
+#endif
 
 #define NUM_CONTEXTS 2
 #define MAX_CORES 64

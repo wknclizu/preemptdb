@@ -63,7 +63,7 @@ retry:
 void bench_worker::do_preemptive_transaction() {
   ASSERT(workload.size());
 retry:
-  __clui();
+  _clui();
   if (preemptive_workload_queue.isEmpty() || ermia::thread::Thread::MainContext()->starved()) {
     // stui is invoked in the swap_context
     swap_context(ermia::thread::Thread::PreemptiveContext(), ermia::thread::Thread::MainContext());
