@@ -17,7 +17,8 @@ Please build and run this [tool](https://github.com/UB-ADBLAB/check_uintr) to ch
 ### Step 2: Enable Kernel Support for User Interrupt
 We have two options to enable kernel support for user interrupts:
 1. Patched Kernel: We provide a patched kernel with uintr support. You can download it from [here](https://github.com/UB-ADBLAB/ubuntu-linux-uintr). Follow the instructions in the repository to build and install the kernel.
-2. Character Device: If you prefer not to use a patched kernel, you can use the character device interface that we develop. This allows you to enable uintr support without modifying the kernel. If your kernel already enables uintr, do not use the character device. Download the driver from [here](https://github.com/UB-ADBLAB/uintr-driver).
+2. Character Device: If you prefer not using a patched kernel, you can use an alternative character device interface from [here](https://github.com/UB-ADBLAB/uintr-driver). This allows you to enable uintr support without modifying the kernel. If your kernel already enables uintr, do not use the character device. To build the system with the alternative device driver, please add `-DUSE_LIBUINTRDRIV=ON` flag to the cmake command in step 4.
+
 
 ### Step 3: Allocate Huge Pages
 PreemptDB uses huge pages for memory allocation. You can allocate huge pages using the following command:
@@ -37,7 +38,10 @@ mkdir build
 
 cd build
 
-cmake .. -DCMAKE_BUILD_TYPE=[Debug|RelWithDebInfo|Release] # Default: Release
+# Default: Release, USE_LIBUINTRDRIV=OFF
+cmake .. \
+    -DCMAKE_BUILD_TYPE=[Debug|RelWithDebInfo|Release] \
+    -DUSE_LIBUINTRDRIV=[ON|OFF] 
 
 make
 ```
