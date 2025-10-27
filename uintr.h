@@ -9,6 +9,27 @@
 #include <unordered_map>
 #include <mutex>
 #include <atomic>
+#include <immintrin.h>
+
+struct RdtscClock {
+    static constexpr double CPU_FREQUENCY_GHZ = 2.8;
+
+    static uint64_t now() {
+        // _mm_mfence();
+        return __rdtsc();
+    }
+
+    static double to_ns(uint64_t ticks) {
+        return static_cast<double>(ticks) / CPU_FREQUENCY_GHZ;
+    }
+};
+
+// Global variables for timing measurements
+extern std::atomic<int64_t> g_senduipi_count;
+extern std::atomic<int64_t> g_interrupt_handler_count;
+extern std::atomic<int64_t> g_total_deliver_time;
+extern std::atomic<int64_t> g_total_switch_time;
+extern thread_local uint64_t g_senduipi_timestamp;
 
 #ifdef USE_LIBUINTRDRIV
 #include <uintrdriv.h>

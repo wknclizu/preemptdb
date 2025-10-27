@@ -81,3 +81,24 @@ cd build
 --seconds=30 \
 --threads=8
 ```
+
+### Experiment Result
+
+```
+========== Interrupt Timing Statistics ==========
+Total _senduipi calls:          249533
+Total interrupt_handler calls:  240010
+
+Deliver Time (senduipi -> interrupt_handler_func):
+  Total:   1377760498307207680.00 ns
+  Average: 5740429558381.77 ns
+
+Switch Time (interrupt_handler_func start -> end):
+  Total:   104220396.43 ns
+  Average: 434.23 ns
+
+Total Interrupt Handling Time:
+  Total:   1377760498411428096.00 ns
+  Average: 5740429558816.00 ns
+=================================================
+```

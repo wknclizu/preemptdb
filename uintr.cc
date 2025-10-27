@@ -5,6 +5,13 @@ thread_local volatile uint32_t worker_id = ~uint32_t{0};
 thread_local std::atomic<uint64_t> lock_counter;
 pcontext* curr_ctx[MAX_CORES];
 
+// Global variables for timing measurements
+std::atomic<int64_t> g_senduipi_count{0};
+std::atomic<int64_t> g_interrupt_handler_count{0};
+std::atomic<int64_t> g_total_deliver_time{0};
+std::atomic<int64_t> g_total_switch_time{0};
+thread_local uint64_t g_senduipi_timestamp = 0;
+
 pcontext::pcontext() {
   lock_counter.store(0);
   start_timestamp = 0;
@@ -90,6 +97,18 @@ void pcontext::xrstor() {
   }
 }
 
+extern "C" void record_interrupt_start() {
+  uint64_t timestamp = RdtscClock::now();
+  g_interrupt_handler_count.fetch_add(1, std::memory_order_relaxed);
+  g_total_deliver_time.fetch_add(timestamp, std::memory_order_relaxed);
+  g_total_switch_time.fetch_sub(timestamp, std::memory_order_relaxed);
+}
+
+extern "C" void record_interrupt_end() {
+  uint64_t timestamp = RdtscClock::now();
+  g_total_switch_time.fetch_add(timestamp, std::memory_order_relaxed);
+}
+
 extern "C" void* handler_helper(void* rsp) {
   if (pcontext::locked()) {
     return rsp;
@@ -147,6 +166,17 @@ interrupt_handler_func:
   pushq %rax
   pushq %rbx
 
+  pushq %rcx
+  pushq %rdx
+  pushq %rsi
+  pushq %rdi
+  cld
+  call record_interrupt_start
+  popq %rdi
+  popq %rsi
+  popq %rdx
+  popq %rcx
+
   // check if rip is in swap_context, if so, quick exit
   movq 0x10(%rsp), %rax # rax = rip
 
@@ -197,9 +227,36 @@ interrupt_handler_func:
   popq %rcx
   popq %rbx
   popq %rax
+
+  # Record interrupt end time before uiret
+  pushq %rax
+  pushq %rcx
+  pushq %rdx
+  pushq %rsi
+  pushq %rdi
+  cld
+  call record_interrupt_end
+  popq %rdi
+  popq %rsi
+  popq %rdx
+  popq %rcx
+  popq %rax
+
 	uiret
 
 .uintr_quick_exit:
+  # Also record end time for quick exit
+  pushq %rcx
+  pushq %rdx
+  pushq %rsi
+  pushq %rdi
+  cld
+  call record_interrupt_end
+  popq %rdi
+  popq %rsi
+  popq %rdx
+  popq %rcx
+
   popq %rbx
   popq %rax
 	uiret

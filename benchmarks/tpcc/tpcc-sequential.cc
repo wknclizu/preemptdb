@@ -6,6 +6,7 @@
 #if !defined(NESTED_COROUTINE) && !defined(HYBRID_COROUTINE)
 
 #include "tpcc-config.h"
+#include "../../uintr.h"
 
 class tpcc_sequential_worker : public bench_worker, public tpcc_worker_mixin {
  public:
@@ -1306,6 +1307,10 @@ retry:
           }
 
           if (ermia::config::scheduling_policy == 2) {
+            uint64_t timestamp = RdtscClock::now();
+            g_senduipi_timestamp = timestamp;
+            g_senduipi_count.fetch_add(1, std::memory_order_relaxed);
+            g_total_deliver_time.fetch_sub(timestamp, std::memory_order_relaxed);
             _senduipi(ermia::sender_idx_map[worker_id]);
           }
 
@@ -1434,6 +1439,34 @@ void tpcc_do_test(ermia::Engine *db) {
 
 int main(int argc, char **argv) {
   bench_main(argc, argv, tpcc_do_test);
+  
+  int64_t senduipi_count = g_senduipi_count.load(std::memory_order_relaxed);
+  int64_t interrupt_count = g_interrupt_handler_count.load(std::memory_order_relaxed);
+  int64_t total_deliver_time = g_total_deliver_time.load(std::memory_order_relaxed);
+  int64_t total_switch_time = g_total_switch_time.load(std::memory_order_relaxed);
+  
+  printf("\n========== Interrupt Timing Statistics ==========\n");
+  printf("Total _senduipi calls:          %ld\n", senduipi_count);
+  printf("Total interrupt_handler calls:  %ld\n", interrupt_count);
+  
+  if (interrupt_count > 0) {
+    double avg_deliver_ns = RdtscClock::to_ns(total_deliver_time) / interrupt_count;
+    double avg_switch_ns = RdtscClock::to_ns(total_switch_time) / interrupt_count;
+    
+    printf("\nDeliver Time (senduipi -> interrupt_handler_func):\n");
+    printf("  Total:   %.2f ns\n", RdtscClock::to_ns(total_deliver_time));
+    printf("  Average: %.2f ns\n", avg_deliver_ns);
+    
+    printf("\nSwitch Time (interrupt_handler_func start -> end):\n");
+    printf("  Total:   %.2f ns\n", RdtscClock::to_ns(total_switch_time));
+    printf("  Average: %.2f ns\n", avg_switch_ns);
+    
+    printf("\nTotal Interrupt Handling Time:\n");
+    printf("  Total:   %.2f ns\n", RdtscClock::to_ns(total_deliver_time + total_switch_time));
+    printf("  Average: %.2f ns\n", avg_deliver_ns + avg_switch_ns);
+  }
+  printf("=================================================\n\n");
+  
   return 0;
 }
 
