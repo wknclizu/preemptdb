@@ -3,6 +3,7 @@
 
 thread_local volatile uint32_t worker_id = ~uint32_t{0};
 thread_local std::atomic<uint64_t> lock_counter;
+uint64_t interrupt_start_timestamps[MAX_CORES];
 pcontext* curr_ctx[MAX_CORES];
 
 // Global variables for timing measurements
@@ -10,7 +11,11 @@ std::atomic<int64_t> g_senduipi_count{0};
 std::atomic<int64_t> g_interrupt_handler_count{0};
 std::atomic<int64_t> g_total_deliver_time{0};
 std::atomic<int64_t> g_total_switch_time{0};
-thread_local uint64_t g_senduipi_timestamp = 0;
+std::atomic<uint64_t> g_senduipi_timestamps[MAX_CORES];
+std::atomic<int64_t> g_interrupt_normal_count{0};
+std::atomic<int64_t> g_interrupt_quick_count{0};
+std::atomic<int64_t> g_switch_time_normal{0};
+std::atomic<int64_t> g_switch_time_quick{0};
 
 pcontext::pcontext() {
   lock_counter.store(0);
@@ -98,15 +103,36 @@ void pcontext::xrstor() {
 }
 
 extern "C" void record_interrupt_start() {
-  uint64_t timestamp = RdtscClock::now();
+  uint64_t recv_timestamp = RdtscClock::now();
+  uint32_t wid = GetWorkerId();
+  interrupt_start_timestamps[wid] = recv_timestamp;
   g_interrupt_handler_count.fetch_add(1, std::memory_order_relaxed);
-  g_total_deliver_time.fetch_add(timestamp, std::memory_order_relaxed);
-  g_total_switch_time.fetch_sub(timestamp, std::memory_order_relaxed);
+  
+  uint64_t send_timestamp = g_senduipi_timestamps[wid].load(std::memory_order_acquire);
+  if (send_timestamp != 0) {
+    uint64_t deliver_time = recv_timestamp - send_timestamp;
+    g_total_deliver_time.fetch_add(deliver_time, std::memory_order_relaxed);
+  }
+  
+  g_total_switch_time.fetch_sub(recv_timestamp, std::memory_order_relaxed);
 }
 
-extern "C" void record_interrupt_end() {
+extern "C" void record_interrupt_end_normal() {
   uint64_t timestamp = RdtscClock::now();
+  uint32_t wid = GetWorkerId();
+  uint64_t switch_time = timestamp - interrupt_start_timestamps[wid];
   g_total_switch_time.fetch_add(timestamp, std::memory_order_relaxed);
+  g_interrupt_normal_count.fetch_add(1, std::memory_order_relaxed);
+  g_switch_time_normal.fetch_add(switch_time, std::memory_order_relaxed);
+}
+
+extern "C" void record_interrupt_end_quick() {
+  uint64_t timestamp = RdtscClock::now();
+  uint32_t wid = GetWorkerId();
+  uint64_t switch_time = timestamp - interrupt_start_timestamps[wid];
+  g_total_switch_time.fetch_add(timestamp, std::memory_order_relaxed);
+  g_interrupt_quick_count.fetch_add(1, std::memory_order_relaxed);
+  g_switch_time_quick.fetch_add(switch_time, std::memory_order_relaxed);
 }
 
 extern "C" void* handler_helper(void* rsp) {
@@ -166,16 +192,26 @@ interrupt_handler_func:
   pushq %rax
   pushq %rbx
 
+  pushq %r11
+  pushq %r10
+  pushq %r9
+  pushq %r8
   pushq %rcx
   pushq %rdx
   pushq %rsi
   pushq %rdi
+  subq $8, %rsp      # align stack to 16 bytes before call
   cld
   call record_interrupt_start
+  addq $8, %rsp
   popq %rdi
   popq %rsi
   popq %rdx
   popq %rcx
+  popq %r8
+  popq %r9
+  popq %r10
+  popq %r11
 
   // check if rip is in swap_context, if so, quick exit
   movq 0x10(%rsp), %rax # rax = rip
@@ -228,34 +264,54 @@ interrupt_handler_func:
   popq %rbx
   popq %rax
 
-  # Record interrupt end time before uiret
+  # Record interrupt end time before uiret (normal path)
+  pushq %r11
+  pushq %r10
+  pushq %r9
+  pushq %r8
   pushq %rax
   pushq %rcx
   pushq %rdx
   pushq %rsi
   pushq %rdi
+  subq $8, %rsp      # align stack to 16 bytes before call
   cld
-  call record_interrupt_end
+  call record_interrupt_end_normal
+  addq $8, %rsp
   popq %rdi
   popq %rsi
   popq %rdx
   popq %rcx
   popq %rax
+  popq %r8
+  popq %r9
+  popq %r10
+  popq %r11
 
 	uiret
 
 .uintr_quick_exit:
-  # Also record end time for quick exit
+  # Also record end time for quick exit (quick path)
+  pushq %r11
+  pushq %r10
+  pushq %r9
+  pushq %r8
   pushq %rcx
   pushq %rdx
   pushq %rsi
   pushq %rdi
+  subq $8, %rsp      # align stack to 16 bytes before call
   cld
-  call record_interrupt_end
+  call record_interrupt_end_quick
+  addq $8, %rsp
   popq %rdi
   popq %rsi
   popq %rdx
   popq %rcx
+  popq %r8
+  popq %r9
+  popq %r10
+  popq %r11
 
   popq %rbx
   popq %rax

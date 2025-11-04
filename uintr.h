@@ -29,7 +29,10 @@ extern std::atomic<int64_t> g_senduipi_count;
 extern std::atomic<int64_t> g_interrupt_handler_count;
 extern std::atomic<int64_t> g_total_deliver_time;
 extern std::atomic<int64_t> g_total_switch_time;
-extern thread_local uint64_t g_senduipi_timestamp;
+extern std::atomic<int64_t> g_interrupt_normal_count;
+extern std::atomic<int64_t> g_interrupt_quick_count;
+extern std::atomic<int64_t> g_switch_time_normal;
+extern std::atomic<int64_t> g_switch_time_quick;
 
 #ifdef USE_LIBUINTRDRIV
 #include <uintrdriv.h>
@@ -66,6 +69,7 @@ extern thread_local uint64_t g_senduipi_timestamp;
 
 #define NUM_CONTEXTS 2
 #define MAX_CORES 64
+extern std::atomic<uint64_t> g_senduipi_timestamps[MAX_CORES];
 
 #if 0
 #define SPACE

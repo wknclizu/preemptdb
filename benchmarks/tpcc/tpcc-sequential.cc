@@ -1308,9 +1308,8 @@ retry:
 
           if (ermia::config::scheduling_policy == 2) {
             uint64_t timestamp = RdtscClock::now();
-            g_senduipi_timestamp = timestamp;
+            g_senduipi_timestamps[worker_id].store(timestamp, std::memory_order_release);
             g_senduipi_count.fetch_add(1, std::memory_order_relaxed);
-            g_total_deliver_time.fetch_sub(timestamp, std::memory_order_relaxed);
             _senduipi(ermia::sender_idx_map[worker_id]);
           }
 
@@ -1445,9 +1444,18 @@ int main(int argc, char **argv) {
   int64_t total_deliver_time = g_total_deliver_time.load(std::memory_order_relaxed);
   int64_t total_switch_time = g_total_switch_time.load(std::memory_order_relaxed);
   
+  int64_t normal_count = g_interrupt_normal_count.load(std::memory_order_relaxed);
+  int64_t quick_count = g_interrupt_quick_count.load(std::memory_order_relaxed);
+  int64_t switch_time_normal = g_switch_time_normal.load(std::memory_order_relaxed);
+  int64_t switch_time_quick = g_switch_time_quick.load(std::memory_order_relaxed);
+  
   printf("\n========== Interrupt Timing Statistics ==========\n");
   printf("Total _senduipi calls:          %ld\n", senduipi_count);
   printf("Total interrupt_handler calls:  %ld\n", interrupt_count);
+  printf("  Normal path:                   %ld (%.2f%%)\n", normal_count, 
+         interrupt_count > 0 ? 100.0 * normal_count / interrupt_count : 0);
+  printf("  Quick exit path:               %ld (%.2f%%)\n", quick_count,
+         interrupt_count > 0 ? 100.0 * quick_count / interrupt_count : 0);
   
   if (interrupt_count > 0) {
     double avg_deliver_ns = RdtscClock::to_ns(total_deliver_time) / interrupt_count;
@@ -1460,6 +1468,20 @@ int main(int argc, char **argv) {
     printf("\nSwitch Time (interrupt_handler_func start -> end):\n");
     printf("  Total:   %.2f ns\n", RdtscClock::to_ns(total_switch_time));
     printf("  Average: %.2f ns\n", avg_switch_ns);
+    
+    if (normal_count > 0) {
+      printf("\n  Normal Interrupt Path:\n");
+      printf("    Count:   %ld\n", normal_count);
+      printf("    Switch Time Total:   %.2f ns\n", RdtscClock::to_ns(switch_time_normal));
+      printf("    Switch Time Average: %.2f ns\n", RdtscClock::to_ns(switch_time_normal) / normal_count);
+    }
+    
+    if (quick_count > 0) {
+      printf("\n  Quick Interrupt Path:\n");
+      printf("    Count:   %ld\n", quick_count);
+      printf("    Switch Time Total:   %.2f ns\n", RdtscClock::to_ns(switch_time_quick));
+      printf("    Switch Time Average: %.2f ns\n", RdtscClock::to_ns(switch_time_quick) / quick_count);
+    }
     
     printf("\nTotal Interrupt Handling Time:\n");
     printf("  Total:   %.2f ns\n", RdtscClock::to_ns(total_deliver_time + total_switch_time));

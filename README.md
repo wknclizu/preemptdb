@@ -84,21 +84,64 @@ cd build
 
 ### Experiment Result
 
+8 threads
 ```
 ========== Interrupt Timing Statistics ==========
-Total _senduipi calls:          249533
-Total interrupt_handler calls:  240010
+Total _senduipi calls:          248898
+Total interrupt_handler calls:  240006
+  Normal path:                   239958 (99.98%)
+  Quick exit path:               48 (0.02%)
 
 Deliver Time (senduipi -> interrupt_handler_func):
-  Total:   1377760498307207680.00 ns
-  Average: 5740429558381.77 ns
+  Total:   169554072.86 ns
+  Average: 706.46 ns
 
 Switch Time (interrupt_handler_func start -> end):
-  Total:   104220396.43 ns
-  Average: 434.23 ns
+  Total:   120624940.00 ns
+  Average: 502.59 ns
+
+  Normal Interrupt Path:
+    Count:   239958
+    Switch Time Total:   120617092.86 ns
+    Switch Time Average: 502.66 ns
+
+  Quick Interrupt Path:
+    Count:   48
+    Switch Time Total:   7847.14 ns
+    Switch Time Average: 163.48 ns
 
 Total Interrupt Handling Time:
-  Total:   1377760498411428096.00 ns
-  Average: 5740429558816.00 ns
+  Total:   290179012.86 ns
+  Average: 1209.05 ns
+=================================================
+
+2 threads
+========== Interrupt Timing Statistics ==========
+Total _senduipi calls:          143910954
+Total interrupt_handler calls:  55455300
+  Normal path:                   55443418 (99.98%)
+  Quick exit path:               11882 (0.02%)
+
+Deliver Time (senduipi -> interrupt_handler_func):
+  Total:   569533052.86 ns
+  Average: 10.27 ns
+
+Switch Time (interrupt_handler_func start -> end):
+  Total:   30616505695.00 ns
+  Average: 552.09 ns
+
+  Normal Interrupt Path:
+    Count:   55443418
+    Switch Time Total:   30615078877.86 ns
+    Switch Time Average: 552.19 ns
+
+  Quick Interrupt Path:
+    Count:   11882
+    Switch Time Total:   1426817.14 ns
+    Switch Time Average: 120.08 ns
+
+Total Interrupt Handling Time:
+  Total:   31186038747.86 ns
+  Average: 562.36 ns
 =================================================
 ```
