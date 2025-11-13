@@ -10,13 +10,15 @@
 #include <mutex>
 #include <atomic>
 #include <immintrin.h>
+#include <x86intrin.h>
 
 struct RdtscClock {
     static constexpr double CPU_FREQUENCY_GHZ = 2.8;
 
     static uint64_t now() {
         // _mm_mfence();
-        return __rdtsc();
+        uint32_t aux;
+        return __rdtscp(&aux);
     }
 
     static double to_ns(uint64_t ticks) {
