@@ -111,18 +111,23 @@ void pcontext::xrstor() {
 extern "C" void record_interrupt_start() {
   uint64_t recv_timestamp = RdtscClock::now();
   uint32_t wid = GetWorkerId();
-  interrupt_start_timestamps[wid] = recv_timestamp;
   // g_interrupt_handler_count.fetch_add(1, std::memory_order_relaxed);
   
   uint64_t send_timestamp = g_senduipi_timestamps[wid].load(std::memory_order_acquire);
+  #ifdef DEBUG
   assert(send_timestamp != 0);
+  #endif
   uint64_t deliver_time = recv_timestamp - send_timestamp;
   g_total_deliver_time.fetch_add(deliver_time, std::memory_order_relaxed);
   
   size_t idx = g_deliver_sample_count.fetch_add(1, std::memory_order_relaxed);
+  #ifdef DEBUG
   assert(idx < MAX_TIMING_SAMPLES);
+  #endif
   g_deliver_time_samples[idx] = deliver_time;
-  
+
+  recv_timestamp = RdtscClock::now();
+  interrupt_start_timestamps[wid] = recv_timestamp;
   g_total_switch_time.fetch_sub(recv_timestamp, std::memory_order_relaxed);
 }
 
@@ -134,7 +139,9 @@ extern "C" void record_interrupt_end_normal() {
   g_switch_time_normal.fetch_add(switch_time, std::memory_order_relaxed);
   
   size_t idx = g_interrupt_normal_count.fetch_add(1, std::memory_order_relaxed);
+  #ifdef DEBUG
   assert(idx < MAX_TIMING_SAMPLES);
+  #endif
   g_switch_time_normal_samples[idx] = switch_time;
 }
 
@@ -146,7 +153,9 @@ extern "C" void record_interrupt_end_quick() {
   g_switch_time_quick.fetch_add(switch_time, std::memory_order_relaxed);
   
   size_t idx = g_interrupt_quick_count.fetch_add(1, std::memory_order_relaxed);
+  #ifdef DEBUG
   assert(idx < MAX_TIMING_SAMPLES);
+  #endif
   g_switch_time_quick_samples[idx] = switch_time;
 }
 

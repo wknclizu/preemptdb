@@ -86,175 +86,175 @@ cd build
 8 threads
 ```
 ========== Interrupt Timing Statistics ==========
-Total _senduipi calls:          249701
+Total _senduipi calls:          248510
 Total interrupt_handler calls:  239991
-  Normal path:                   239940 (99.98%)
-  Quick exit path:               51 (0.02%)
+  Normal path:                   239945 (99.98%)
+  Quick exit path:               46 (0.02%)
 
 Deliver Time (senduipi -> interrupt_handler_func):
   Samples: 239991
-  Total:   184573590.71 ns
-  Average: 769.09 ns
-  Std Dev: 4866.78 ns
-  Min:     374.29 ns
-  Max:     800281.43 ns
-  P50:     542.14 ns
-  P90:     678.57 ns
-  P95:     732.14 ns
-  P99:     854.29 ns
-  P99.9:   89975.71 ns
+  Total:   172113857.14 ns
+  Average: 717.17 ns
+  Std Dev: 5523.45 ns
+  Min:     370.71 ns
+  Max:     936672.14 ns
+  P50:     514.29 ns
+  P90:     634.29 ns
+  P95:     684.29 ns
+  P99:     793.57 ns
+  P99.9:   86203.57 ns
 
 Switch Time (interrupt_handler_func start -> end):
-  Total:   151575899.29 ns
-  Average: 631.59 ns
+  Total:   114514260.00 ns
+  Average: 477.16 ns
 
   Normal Interrupt Path:
-    Samples: 239940
-    Count:   239940
-    Switch Time Total:   151560605.71 ns
-    Switch Time Average: 631.66 ns
-    Std Dev: 218.28 ns
-    Min:     199.29 ns
-    Max:     13625.71 ns
-    P50:     601.43 ns
-    P90:     752.86 ns
-    P95:     826.43 ns
-    P99:     1067.14 ns
-    P99.9:   2970.71 ns
+    Samples: 239945
+    Count:   239945
+    Switch Time Total:   114507460.00 ns
+    Switch Time Average: 477.22 ns
+    Std Dev: 153.67 ns
+    Min:     99.29 ns
+    Max:     46945.71 ns
+    P50:     458.57 ns
+    P90:     594.29 ns
+    P95:     650.00 ns
+    P99:     763.57 ns
+    P99.9:   942.86 ns
 
   Quick Interrupt Path:
-    Samples: 51
-    Count:   51
-    Switch Time Total:   15293.57 ns
-    Switch Time Average: 299.87 ns
-    Std Dev: 94.44 ns
-    Min:     200.71 ns
-    Max:     913.57 ns
-    P50:     296.43 ns
-    P90:     338.57 ns
-    P95:     342.86 ns
-    P99:     389.29 ns
-    P99.9:   389.29 ns
+    Samples: 46
+    Count:   46
+    Switch Time Total:   6800.00 ns
+    Switch Time Average: 147.83 ns
+    Std Dev: 111.56 ns
+    Min:     102.86 ns
+    Max:     739.29 ns
+    P50:     113.57 ns
+    P90:     147.86 ns
+    P95:     313.57 ns
+    P99:     457.86 ns
+    P99.9:   457.86 ns
 
 Total Interrupt Handling Time:
-  Total:   336149490.00 ns
-  Average: 1400.68 ns
+  Total:   286628117.14 ns
+  Average: 1194.33 ns
 =================================================
 ```
 
 31 threads
 ```
 ========== Interrupt Timing Statistics ==========
-Total _senduipi calls:          240019
-Total interrupt_handler calls:  239976
-  Normal path:                   239963 (99.99%)
+Total _senduipi calls:          240029
+Total interrupt_handler calls:  239974
+  Normal path:                   239961 (99.99%)
   Quick exit path:               13 (0.01%)
 
 Deliver Time (senduipi -> interrupt_handler_func):
-  Samples: 239976
-  Total:   195659151.43 ns
-  Average: 815.33 ns
-  Std Dev: 6043.36 ns
-  Min:     370.00 ns
-  Max:     1127837.14 ns
-  P50:     564.29 ns
-  P90:     917.86 ns
-  P95:     1075.00 ns
-  P99:     1473.57 ns
-  P99.9:   84451.43 ns
+  Samples: 239974
+  Total:   188108040.00 ns
+  Average: 783.87 ns
+  Std Dev: 6026.27 ns
+  Min:     368.57 ns
+  Max:     993612.86 ns
+  P50:     518.57 ns
+  P90:     862.14 ns
+  P95:     1017.14 ns
+  P99:     1366.43 ns
+  P99.9:   85423.57 ns
 
 Switch Time (interrupt_handler_func start -> end):
-  Total:   202886699.29 ns
-  Average: 845.45 ns
+  Total:   168124490.71 ns
+  Average: 700.59 ns
 
   Normal Interrupt Path:
-    Samples: 239963
-    Count:   239963
-    Switch Time Total:   202880773.57 ns
-    Switch Time Average: 845.47 ns
-    Std Dev: 367.72 ns
-    Min:     216.43 ns
-    Max:     16183.57 ns
-    P50:     737.86 ns
-    P90:     1245.71 ns
-    P95:     1478.57 ns
-    P99:     2298.57 ns
-    P99.9:   3377.14 ns
+    Samples: 239961
+    Count:   239961
+    Switch Time Total:   168121901.43 ns
+    Switch Time Average: 700.62 ns
+    Std Dev: 278.23 ns
+    Min:     104.29 ns
+    Max:     12613.57 ns
+    P50:     645.71 ns
+    P90:     1032.86 ns
+    P95:     1200.71 ns
+    P99:     1606.43 ns
+    P99.9:   2600.71 ns
 
   Quick Interrupt Path:
     Samples: 13
     Count:   13
-    Switch Time Total:   5925.71 ns
-    Switch Time Average: 455.82 ns
-    Std Dev: 225.83 ns
-    Min:     324.29 ns
-    Max:     1227.14 ns
-    P50:     400.00 ns
-    P90:     428.57 ns
-    P95:     462.14 ns
-    P99:     462.14 ns
-    P99.9:   462.14 ns
+    Switch Time Total:   2589.29 ns
+    Switch Time Average: 199.18 ns
+    Std Dev: 188.41 ns
+    Min:     84.29 ns
+    Max:     807.86 ns
+    P50:     127.86 ns
+    P90:     162.86 ns
+    P95:     371.43 ns
+    P99:     371.43 ns
+    P99.9:   371.43 ns
 
 Total Interrupt Handling Time:
-  Total:   398545850.71 ns
-  Average: 1660.77 ns
+  Total:   356232530.71 ns
+  Average: 1484.46 ns
 =================================================
 ```
 63 threads
 ```
 ========== Interrupt Timing Statistics ==========
-Total _senduipi calls:          240002
-Total interrupt_handler calls:  239931
-  Normal path:                   239914 (99.99%)
-  Quick exit path:               17 (0.01%)
+Total _senduipi calls:          240019
+Total interrupt_handler calls:  239919
+  Normal path:                   239900 (99.99%)
+  Quick exit path:               19 (0.01%)
 
 Deliver Time (senduipi -> interrupt_handler_func):
-  Samples: 239931
-  Total:   433471110.00 ns
-  Average: 1806.65 ns
-  Std Dev: 7867.90 ns
-  Min:     574.29 ns
-  Max:     1143442.14 ns
-  P50:     1104.29 ns
-  P90:     2288.57 ns
-  P95:     2857.14 ns
-  P99:     4715.71 ns
-  P99.9:   103417.14 ns
+  Samples: 239919
+  Total:   430951373.57 ns
+  Average: 1796.24 ns
+  Std Dev: 9457.71 ns
+  Min:     580.00 ns
+  Max:     986242.14 ns
+  P50:     949.29 ns
+  P90:     1551.43 ns
+  P95:     1830.00 ns
+  P99:     4079.29 ns
+  P99.9:   106830.00 ns
 
 Switch Time (interrupt_handler_func start -> end):
-  Total:   357474010.71 ns
-  Average: 1489.90 ns
+  Total:   196280859.29 ns
+  Average: 818.11 ns
 
   Normal Interrupt Path:
-    Samples: 239914
-    Count:   239914
-    Switch Time Total:   357464187.14 ns
-    Switch Time Average: 1489.97 ns
-    Std Dev: 880.19 ns
-    Min:     221.43 ns
-    Max:     17898.57 ns
-    P50:     1207.14 ns
-    P90:     2615.00 ns
-    P95:     3252.14 ns
-    P99:     4799.29 ns
-    P99.9:   6852.14 ns
+    Samples: 239900
+    Count:   239900
+    Switch Time Total:   196275985.71 ns
+    Switch Time Average: 818.16 ns
+    Std Dev: 394.43 ns
+    Min:     114.29 ns
+    Max:     13528.57 ns
+    P50:     724.29 ns
+    P90:     1290.00 ns
+    P95:     1520.71 ns
+    P99:     2140.00 ns
+    P99.9:   3717.86 ns
 
   Quick Interrupt Path:
-    Samples: 17
-    Count:   17
-    Switch Time Total:   9823.57 ns
-    Switch Time Average: 577.86 ns
-    Std Dev: 346.40 ns
-    Min:     222.14 ns
-    Max:     1456.43 ns
-    P50:     437.86 ns
-    P90:     892.86 ns
-    P95:     917.86 ns
-    P99:     917.86 ns
-    P99.9:   917.86 ns
+    Samples: 19
+    Count:   19
+    Switch Time Total:   4873.57 ns
+    Switch Time Average: 256.50 ns
+    Std Dev: 202.11 ns
+    Min:     189.29 ns
+    Max:     1109.29 ns
+    P50:     205.71 ns
+    P90:     232.86 ns
+    P95:     285.00 ns
+    P99:     285.00 ns
+    P99.9:   285.00 ns
 
 Total Interrupt Handling Time:
-  Total:   790945120.71 ns
-  Average: 3296.55 ns
+  Total:   627232232.86 ns
+  Average: 2614.35 ns
 =================================================
 ```
