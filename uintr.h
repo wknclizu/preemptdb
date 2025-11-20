@@ -28,13 +28,20 @@ struct RdtscClock {
 
 // Global variables for timing measurements
 extern std::atomic<int64_t> g_senduipi_count;
-extern std::atomic<int64_t> g_interrupt_handler_count;
+// extern std::atomic<int64_t> g_interrupt_handler_count;
 extern std::atomic<int64_t> g_total_deliver_time;
 extern std::atomic<int64_t> g_total_switch_time;
-extern std::atomic<int64_t> g_interrupt_normal_count;
-extern std::atomic<int64_t> g_interrupt_quick_count;
 extern std::atomic<int64_t> g_switch_time_normal;
 extern std::atomic<int64_t> g_switch_time_quick;
+
+constexpr size_t MAX_TIMING_SAMPLES = 250000;
+extern uint64_t g_deliver_time_samples[MAX_TIMING_SAMPLES];
+extern uint64_t g_switch_time_normal_samples[MAX_TIMING_SAMPLES];
+extern uint64_t g_switch_time_quick_samples[MAX_TIMING_SAMPLES];
+
+extern std::atomic<size_t> g_deliver_sample_count;
+extern std::atomic<size_t> g_interrupt_normal_count;       // Also switch_normal_sample_count
+extern std::atomic<size_t> g_interrupt_quick_count;        // Also switch_quick_sample_count
 
 #ifdef USE_LIBUINTRDRIV
 #include <uintrdriv.h>

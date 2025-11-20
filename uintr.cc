@@ -1,5 +1,6 @@
 #include "uintr.h"
 #include "dbcore/sm-thread.h"
+#include <cassert>
 
 thread_local volatile uint32_t worker_id = ~uint32_t{0};
 thread_local std::atomic<uint64_t> lock_counter;
@@ -8,14 +9,19 @@ pcontext* curr_ctx[MAX_CORES];
 
 // Global variables for timing measurements
 std::atomic<int64_t> g_senduipi_count{0};
-std::atomic<int64_t> g_interrupt_handler_count{0};
 std::atomic<int64_t> g_total_deliver_time{0};
 std::atomic<int64_t> g_total_switch_time{0};
 std::atomic<uint64_t> g_senduipi_timestamps[MAX_CORES];
-std::atomic<int64_t> g_interrupt_normal_count{0};
-std::atomic<int64_t> g_interrupt_quick_count{0};
 std::atomic<int64_t> g_switch_time_normal{0};
 std::atomic<int64_t> g_switch_time_quick{0};
+
+uint64_t g_deliver_time_samples[MAX_TIMING_SAMPLES] = {0};
+uint64_t g_switch_time_normal_samples[MAX_TIMING_SAMPLES] = {0};
+uint64_t g_switch_time_quick_samples[MAX_TIMING_SAMPLES] = {0};
+
+std::atomic<size_t> g_deliver_sample_count{0};
+std::atomic<size_t> g_interrupt_normal_count{0};
+std::atomic<size_t> g_interrupt_quick_count{0};
 
 pcontext::pcontext() {
   lock_counter.store(0);
@@ -106,13 +112,16 @@ extern "C" void record_interrupt_start() {
   uint64_t recv_timestamp = RdtscClock::now();
   uint32_t wid = GetWorkerId();
   interrupt_start_timestamps[wid] = recv_timestamp;
-  g_interrupt_handler_count.fetch_add(1, std::memory_order_relaxed);
+  // g_interrupt_handler_count.fetch_add(1, std::memory_order_relaxed);
   
   uint64_t send_timestamp = g_senduipi_timestamps[wid].load(std::memory_order_acquire);
-  if (send_timestamp != 0) {
-    uint64_t deliver_time = recv_timestamp - send_timestamp;
-    g_total_deliver_time.fetch_add(deliver_time, std::memory_order_relaxed);
-  }
+  assert(send_timestamp != 0);
+  uint64_t deliver_time = recv_timestamp - send_timestamp;
+  g_total_deliver_time.fetch_add(deliver_time, std::memory_order_relaxed);
+  
+  size_t idx = g_deliver_sample_count.fetch_add(1, std::memory_order_relaxed);
+  assert(idx < MAX_TIMING_SAMPLES);
+  g_deliver_time_samples[idx] = deliver_time;
   
   g_total_switch_time.fetch_sub(recv_timestamp, std::memory_order_relaxed);
 }
@@ -122,8 +131,11 @@ extern "C" void record_interrupt_end_normal() {
   uint32_t wid = GetWorkerId();
   uint64_t switch_time = timestamp - interrupt_start_timestamps[wid];
   g_total_switch_time.fetch_add(timestamp, std::memory_order_relaxed);
-  g_interrupt_normal_count.fetch_add(1, std::memory_order_relaxed);
   g_switch_time_normal.fetch_add(switch_time, std::memory_order_relaxed);
+  
+  size_t idx = g_interrupt_normal_count.fetch_add(1, std::memory_order_relaxed);
+  assert(idx < MAX_TIMING_SAMPLES);
+  g_switch_time_normal_samples[idx] = switch_time;
 }
 
 extern "C" void record_interrupt_end_quick() {
@@ -131,8 +143,11 @@ extern "C" void record_interrupt_end_quick() {
   uint32_t wid = GetWorkerId();
   uint64_t switch_time = timestamp - interrupt_start_timestamps[wid];
   g_total_switch_time.fetch_add(timestamp, std::memory_order_relaxed);
-  g_interrupt_quick_count.fetch_add(1, std::memory_order_relaxed);
   g_switch_time_quick.fetch_add(switch_time, std::memory_order_relaxed);
+  
+  size_t idx = g_interrupt_quick_count.fetch_add(1, std::memory_order_relaxed);
+  assert(idx < MAX_TIMING_SAMPLES);
+  g_switch_time_quick_samples[idx] = switch_time;
 }
 
 extern "C" void* handler_helper(void* rsp) {

@@ -3,10 +3,14 @@
  * https://github.com/oltpbenchmark/oltpbench/tree/master/src/com/oltpbenchmark/benchmarks/tpcc
  */
 
+#include <cstddef>
 #if !defined(NESTED_COROUTINE) && !defined(HYBRID_COROUTINE)
 
 #include "tpcc-config.h"
 #include "../../uintr.h"
+#include <algorithm>
+#include <cmath>
+#include <vector>
 
 class tpcc_sequential_worker : public bench_worker, public tpcc_worker_mixin {
  public:
@@ -1437,17 +1441,64 @@ void tpcc_do_test(ermia::Engine *db) {
 }
 
 int main(int argc, char **argv) {
+  auto calculate_stats = [](uint64_t* samples, size_t count) {
+    struct Stats {
+      double min_ns, max_ns, mean_ns, stddev_ns;
+      double p50_ns, p90_ns, p95_ns, p99_ns, p999_ns;
+    };
+    
+    if (count == 0) return Stats{0, 0, 0, 0, 0, 0, 0, 0, 0};
+    
+    double sum = 0;
+    double min_val = RdtscClock::to_ns(samples[0]);
+    double max_val = min_val;
+    for (size_t i = 0; i < count; ++i) {
+      double val_ns = RdtscClock::to_ns(samples[i]);
+      sum += val_ns;
+      if (val_ns < min_val) min_val = val_ns;
+      if (val_ns > max_val) max_val = val_ns;
+    }
+    double mean = sum / count;
+    
+    double variance = 0;
+    for (size_t i = 0; i < count; ++i) {
+      double diff = RdtscClock::to_ns(samples[i]) - mean;
+      variance += diff * diff;
+    }
+    variance /= count;
+    double stddev = sqrt(variance);
+    
+    std::vector<uint64_t> sorted_samples(samples, samples + count);
+    std::sort(sorted_samples.begin(), sorted_samples.end());
+    
+    auto percentile = [&](double p) -> double {
+      size_t idx = (size_t)((count - 1) * p / 100.0);
+      return RdtscClock::to_ns(sorted_samples[idx]);
+    };
+    
+    return Stats{
+      min_val, max_val, mean, stddev,
+      percentile(50), percentile(90), percentile(95), 
+      percentile(99), percentile(99.9)
+    };
+  };
+  
   bench_main(argc, argv, tpcc_do_test);
   
   int64_t senduipi_count = g_senduipi_count.load(std::memory_order_relaxed);
-  int64_t interrupt_count = g_interrupt_handler_count.load(std::memory_order_relaxed);
   int64_t total_deliver_time = g_total_deliver_time.load(std::memory_order_relaxed);
   int64_t total_switch_time = g_total_switch_time.load(std::memory_order_relaxed);
   
-  int64_t normal_count = g_interrupt_normal_count.load(std::memory_order_relaxed);
-  int64_t quick_count = g_interrupt_quick_count.load(std::memory_order_relaxed);
   int64_t switch_time_normal = g_switch_time_normal.load(std::memory_order_relaxed);
   int64_t switch_time_quick = g_switch_time_quick.load(std::memory_order_relaxed);
+  
+  size_t interrupt_count = g_deliver_sample_count.load(std::memory_order_relaxed);
+  size_t normal_count = g_interrupt_normal_count.load(std::memory_order_relaxed);
+  size_t quick_count = g_interrupt_quick_count.load(std::memory_order_relaxed);
+  
+  size_t deliver_sample_count = std::min(interrupt_count, MAX_TIMING_SAMPLES);
+  size_t switch_normal_sample_count = std::min(normal_count, MAX_TIMING_SAMPLES);
+  size_t switch_quick_sample_count = std::min(quick_count, MAX_TIMING_SAMPLES);
   
   printf("\n========== Interrupt Timing Statistics ==========\n");
   printf("Total _senduipi calls:          %ld\n", senduipi_count);
@@ -1461,9 +1512,24 @@ int main(int argc, char **argv) {
     double avg_deliver_ns = RdtscClock::to_ns(total_deliver_time) / interrupt_count;
     double avg_switch_ns = RdtscClock::to_ns(total_switch_time) / interrupt_count;
     
+    auto deliver_stats = calculate_stats(g_deliver_time_samples, deliver_sample_count);
+    auto normal_stats = calculate_stats(g_switch_time_normal_samples, switch_normal_sample_count);
+    auto quick_stats = calculate_stats(g_switch_time_quick_samples, switch_quick_sample_count);
+    
     printf("\nDeliver Time (senduipi -> interrupt_handler_func):\n");
+    printf("  Samples: %zu\n", deliver_sample_count);
     printf("  Total:   %.2f ns\n", RdtscClock::to_ns(total_deliver_time));
     printf("  Average: %.2f ns\n", avg_deliver_ns);
+    if (deliver_sample_count > 0) {
+      printf("  Std Dev: %.2f ns\n", deliver_stats.stddev_ns);
+      printf("  Min:     %.2f ns\n", deliver_stats.min_ns);
+      printf("  Max:     %.2f ns\n", deliver_stats.max_ns);
+      printf("  P50:     %.2f ns\n", deliver_stats.p50_ns);
+      printf("  P90:     %.2f ns\n", deliver_stats.p90_ns);
+      printf("  P95:     %.2f ns\n", deliver_stats.p95_ns);
+      printf("  P99:     %.2f ns\n", deliver_stats.p99_ns);
+      printf("  P99.9:   %.2f ns\n", deliver_stats.p999_ns);
+    }
     
     printf("\nSwitch Time (interrupt_handler_func start -> end):\n");
     printf("  Total:   %.2f ns\n", RdtscClock::to_ns(total_switch_time));
@@ -1471,16 +1537,38 @@ int main(int argc, char **argv) {
     
     if (normal_count > 0) {
       printf("\n  Normal Interrupt Path:\n");
+      printf("    Samples: %zu\n", switch_normal_sample_count);
       printf("    Count:   %ld\n", normal_count);
       printf("    Switch Time Total:   %.2f ns\n", RdtscClock::to_ns(switch_time_normal));
       printf("    Switch Time Average: %.2f ns\n", RdtscClock::to_ns(switch_time_normal) / normal_count);
+      if (switch_normal_sample_count > 0) {
+        printf("    Std Dev: %.2f ns\n", normal_stats.stddev_ns);
+        printf("    Min:     %.2f ns\n", normal_stats.min_ns);
+        printf("    Max:     %.2f ns\n", normal_stats.max_ns);
+        printf("    P50:     %.2f ns\n", normal_stats.p50_ns);
+        printf("    P90:     %.2f ns\n", normal_stats.p90_ns);
+        printf("    P95:     %.2f ns\n", normal_stats.p95_ns);
+        printf("    P99:     %.2f ns\n", normal_stats.p99_ns);
+        printf("    P99.9:   %.2f ns\n", normal_stats.p999_ns);
+      }
     }
     
     if (quick_count > 0) {
       printf("\n  Quick Interrupt Path:\n");
+      printf("    Samples: %zu\n", switch_quick_sample_count);
       printf("    Count:   %ld\n", quick_count);
       printf("    Switch Time Total:   %.2f ns\n", RdtscClock::to_ns(switch_time_quick));
       printf("    Switch Time Average: %.2f ns\n", RdtscClock::to_ns(switch_time_quick) / quick_count);
+      if (switch_quick_sample_count > 0) {
+        printf("    Std Dev: %.2f ns\n", quick_stats.stddev_ns);
+        printf("    Min:     %.2f ns\n", quick_stats.min_ns);
+        printf("    Max:     %.2f ns\n", quick_stats.max_ns);
+        printf("    P50:     %.2f ns\n", quick_stats.p50_ns);
+        printf("    P90:     %.2f ns\n", quick_stats.p90_ns);
+        printf("    P95:     %.2f ns\n", quick_stats.p95_ns);
+        printf("    P99:     %.2f ns\n", quick_stats.p99_ns);
+        printf("    P99.9:   %.2f ns\n", quick_stats.p999_ns);
+      }
     }
     
     printf("\nTotal Interrupt Handling Time:\n");
